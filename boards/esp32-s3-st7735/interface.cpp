@@ -9,7 +9,7 @@
 #define TFT_BL   4
 
 const unsigned long debounceDelay = 50;
-const unsigned long longPressTime = 500; // 500ms hold for Back/Exit
+const unsigned long longPressTime = 500; 
 
 bool lastPrevReading = HIGH, stablePrevState = HIGH; unsigned long lastPrevDebounce = 0;
 bool lastNextReading = HIGH, stableNextState = HIGH; unsigned long lastNextDebounce = 0;
@@ -29,36 +29,49 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {}
-int getBattery() { return Battery_information::getBatteryPercentage(); }
+
+// Hardcoded to 100% to prevent the board from shutting down if the battery pin is floating
+int getBattery() { return 100; } 
+
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
 void InputHandler(void) {
     unsigned long now = millis();
     PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
 
-    // Prev / Up
+    // Read Prev / Up
     bool prevReading = digitalRead(BTN_PREV);
     if (prevReading != lastPrevReading) { lastPrevDebounce = now; }
     if ((now - lastPrevDebounce) > debounceDelay) {
         if (prevReading != stablePrevState) {
             stablePrevState = prevReading;
-            if (stablePrevState == LOW) { PrevPress = true; AnyKeyPress = true; }
+            if (stablePrevState == LOW) { 
+                if (!wakeUpScreen()) { // Wakes screen if asleep, otherwise triggers button
+                    PrevPress = true; 
+                    AnyKeyPress = true; 
+                }
+            }
         }
     }
     lastPrevReading = prevReading;
 
-    // Next / Down
+    // Read Next / Down
     bool nextReading = digitalRead(BTN_NEXT);
     if (nextReading != lastNextReading) { lastNextDebounce = now; }
     if ((now - lastNextDebounce) > debounceDelay) {
         if (nextReading != stableNextState) {
             stableNextState = nextReading;
-            if (stableNextState == LOW) { NextPress = true; AnyKeyPress = true; }
+            if (stableNextState == LOW) { 
+                if (!wakeUpScreen()) {
+                    NextPress = true; 
+                    AnyKeyPress = true; 
+                }
+            }
         }
     }
     lastNextReading = nextReading;
 
-    // Select (Short press = Select, Long press = Exit/Back)
+    // Read Select (Short press = Select, Long press = Exit/Back)
     bool selReading = digitalRead(SEL_BTN);
     if (selReading != lastSelReading) { lastSelDebounce = now; }
     if ((now - lastSelDebounce) > debounceDelay) {
@@ -69,7 +82,10 @@ void InputHandler(void) {
                 selLongPressed = false;
             } else {
                 if (!selLongPressed) { 
-                    SelPress = true; AnyKeyPress = true; 
+                    if (!wakeUpScreen()) {
+                        SelPress = true; 
+                        AnyKeyPress = true; 
+                    }
                 }
             }
         }
@@ -78,7 +94,10 @@ void InputHandler(void) {
 
     // Trigger Back/Exit if held down
     if (stableSelState == LOW && !selLongPressed && (now - selPressTime > longPressTime)) {
-        EscPress = true; AnyKeyPress = true;
+        if (!wakeUpScreen()) {
+            EscPress = true; 
+            AnyKeyPress = true;
+        }
         selLongPressed = true;
     }
 }
