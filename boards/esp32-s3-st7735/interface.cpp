@@ -6,16 +6,12 @@
 // --- 8 Physical Buttons from your Target Definition ---
 #define BTN_UP     38  
 #define BTN_DOWN   39  
-#define BTN_LEFT   4   
-#define BTN_RIGHT  5   
-#define BTN_A      15  
-#define BTN_B      16  
-#define BTN_START  48  
-#define BTN_SELECT 47  
-
-// --- Screen Backlight (Overrides the default from pins_arduino.h) ---
-#undef TFT_BL
-#define TFT_BL     2 
+#define BTN_LEFT   4   // Dedicated Back / Escape
+#define BTN_RIGHT  5   // Secondary Next
+#define BTN_A      15  // Primary Select / OK
+#define BTN_B      16  // Secondary Back / Escape
+#define BTN_START  48  // Home / Long press for Deep Sleep
+#define BTN_SELECT 47  // Secondary Select
 
 const unsigned long debounceDelay = 50;
 const unsigned long longPressTime = 600;
@@ -28,7 +24,6 @@ struct ButtonState {
     bool longPressed = false;
 };
 
-// Renamed 'select' to 'btnSelect' to avoid conflict with the C++ system function
 ButtonState up, down, left, right, a, b, start, btnSelect;
 
 void _setup_gpio() {
@@ -41,13 +36,17 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
+    // DO NOT redefine TFT_BL here. The platformio.ini handles it (Pin 2).
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
+
     bruceConfig.colorInverted = 0;
     bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {}
+
+// Hardcoded to 100% to prevent random shutdowns if the battery pin is floating
 int getBattery() { return 100; } 
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
