@@ -2,6 +2,7 @@
 #include "core/powerSave.h"
 #include "core/utils.h"
 #include <Arduino.h>
+#include <SPI.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
@@ -30,18 +31,25 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T5: setup_gpio <<<");
+    Serial.println(">>> BUILD-T6: setup_gpio <<<");
     
-    // Keep SD Card CS high so it doesn't interfere
+    // 1. Deselect both TFT and SD so they don't interfere
+    pinMode(45, OUTPUT); // TFT_CS
+    digitalWrite(45, HIGH);
     pinMode(SDCARD_CS, OUTPUT);
     digitalWrite(SDCARD_CS, HIGH);
+    
+    // 2. Pull up the shared MISO pin
+    pinMode(SDCARD_MISO, INPUT_PULLUP);
+    
+    // 3. Manually start the SPI bus (SCLK=40, MISO=41, MOSI=42, SS=45)
+    // This fixes the SD card mount issue BEFORE the display initializes
+    SPI.begin(40, 41, 42, 45);
+    
+    // 4. Give the SD card a moment to power up
+    delay(100);
 
-    // CRITICAL FIX: Initialize the TFT before Bruce tries to mount the SD card.
-    // This starts the SPI bus so the SD card can communicate.
-    tft.init();
-    tft.setRotation(bruceConfigPins.rotation);
-    tft.fillScreen(TFT_BLACK);
-
+    // 5. Setup your buttons
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -51,6 +59,7 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
+    // 6. Turn on backlight
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
 
@@ -59,7 +68,7 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T5: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T6: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
