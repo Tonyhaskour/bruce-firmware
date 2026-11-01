@@ -5,15 +5,14 @@
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
-// --- 8 buttons, identical to the Retro-Go RG_GAMEPAD_GPIO_MAP ---
-#define BTN_UP     38  // Prev / Up
-#define BTN_DOWN   39  // Next / Down
-#define BTN_LEFT   4   // Back
-#define BTN_RIGHT  5   // Next (secondary)
-#define BTN_A      15  // Select / OK (also the wake-up button)
-#define BTN_B      16  // Back (secondary)
-#define BTN_START  48  // Hold = power off (deep sleep)
-#define BTN_SELECT 47  // Select (secondary)
+#define BTN_UP     38
+#define BTN_DOWN   39
+#define BTN_LEFT   4
+#define BTN_RIGHT  5
+#define BTN_A      15
+#define BTN_B      16
+#define BTN_START  48
+#define BTN_SELECT 47
 
 const unsigned long debounceDelay = 50;
 const unsigned long longPressTime = 600;
@@ -31,7 +30,8 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    // Keep the SD card deselected (CS high) so it stays quiet on the shared SPI bus
+    Serial.println(">>> BUILD-T4: setup_gpio <<<");
+    
     pinMode(SDCARD_CS, OUTPUT);
     digitalWrite(SDCARD_CS, HIGH);
 
@@ -44,7 +44,6 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // TFT_BL (pin 2) comes from platformio.ini - do not redefine it here
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
 
@@ -52,19 +51,18 @@ void _setup_gpio() {
     bruceConfigPins.rotation = 1;
 }
 
-void _post_setup_gpio() {}
+void _post_setup_gpio() {
+    Serial.printf(">>> BUILD-T4: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+                  (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
+}
 
 int getBattery() { return 100; }
-
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
 bool checkButton(ButtonState &btn, int pin) {
     bool reading = digitalRead(pin);
-    if (reading != btn.lastReading) {
-        btn.lastDebounceTime = millis();
-    }
+    if (reading != btn.lastReading) { btn.lastDebounceTime = millis(); }
     btn.lastReading = reading;
-
     if ((millis() - btn.lastDebounceTime) > debounceDelay) {
         if (reading != btn.stableState) {
             btn.stableState = reading;
@@ -79,7 +77,6 @@ bool checkButton(ButtonState &btn, int pin) {
 }
 
 void InputHandler(void) {
-    // --- Heartbeat Test ---
     static unsigned long lastBeat = 0;
     if (millis() - lastBeat > 2000) {
         lastBeat = millis();
@@ -87,38 +84,18 @@ void InputHandler(void) {
     }
 
     unsigned long now = millis();
-    PrevPress = false;
-    NextPress = false;
-    SelPress = false;
-    EscPress = false;
+    PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
 
-    if (checkButton(btnUp, BTN_UP)) {
-        if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnDown, BTN_DOWN)) {
-        if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnLeft, BTN_LEFT)) {
-        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnRight, BTN_RIGHT)) {
-        if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnA, BTN_A)) {
-        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnB, BTN_B)) {
-        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnSel, BTN_SELECT)) {
-        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; }
-    }
-    if (checkButton(btnStart, BTN_START)) {
-        wakeUpScreen();
-    }
+    if (checkButton(btnUp, BTN_UP)) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnDown, BTN_DOWN)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnLeft, BTN_LEFT)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnRight, BTN_RIGHT)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnA, BTN_A)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnB, BTN_B)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnSel, BTN_SELECT)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
+    if (checkButton(btnStart, BTN_START)) { wakeUpScreen(); }
 
-    if (digitalRead(BTN_START) == LOW && !btnStart.longPressed &&
-        (now - btnStart.pressTime > longPressTime)) {
+    if (digitalRead(BTN_START) == LOW && !btnStart.longPressed && (now - btnStart.pressTime > longPressTime)) {
         btnStart.longPressed = true;
         powerOff();
     }
