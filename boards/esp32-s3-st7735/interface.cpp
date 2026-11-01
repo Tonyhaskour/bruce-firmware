@@ -14,12 +14,15 @@
 #define BTN_START  48
 #define BTN_SELECT 47
 
+#define SDCARD_CS_PIN 1
+#define TFT_BL_PIN 2
+
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T11: setup_gpio <<<");
+    Serial.println(">>> BUILD-T12: setup_gpio <<<");
     
-    // Initialize ADC (Bruce's core requires this to prevent crashes)
-    analogReadResolution(12);
-    analogSetAttenuation(ADC_11db);
+    // Deselect SD Card so it doesn't interfere with the boot
+    pinMode(SDCARD_CS_PIN, OUTPUT);
+    digitalWrite(SDCARD_CS_PIN, HIGH);
 
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
@@ -30,21 +33,17 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // TFT_BL is defined in pins_arduino.h as 2
-    pinMode(TFT_BL, OUTPUT);
-    digitalWrite(TFT_BL, HIGH);
-
-    bruceConfig.colorInverted = 0;
-    bruceConfigPins.rotation = 1;
+    pinMode(TFT_BL_PIN, OUTPUT);
+    digitalWrite(TFT_BL_PIN, HIGH);
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T11: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T12: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
 int getBattery() { return 100; }
-void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
+void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL_PIN, brightval); }
 
 bool lastUp = HIGH, stableUp = HIGH; unsigned long lastUpTime = 0;
 bool lastDown = HIGH, stableDown = HIGH; unsigned long lastDownTime = 0;
@@ -75,6 +74,7 @@ void InputHandler(void) {
         Serial.printf("alive %lu\n", millis());
     }
 
+    unsigned long now = millis();
     PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
 
     if (checkButton(lastUp, stableUp, lastUpTime, BTN_UP)) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
@@ -93,7 +93,7 @@ void InputHandler(void) {
 }
 
 void powerOff() {
-    digitalWrite(TFT_BL, LOW);
+    digitalWrite(TFT_BL_PIN, LOW);
     while (digitalRead(BTN_START) == LOW) delay(10);
     while (digitalRead(BTN_A) == LOW) delay(10);
     rtc_gpio_pullup_en((gpio_num_t)BTN_A);
