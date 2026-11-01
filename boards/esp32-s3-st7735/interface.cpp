@@ -31,8 +31,7 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    // FIX: Keep the SD card deselected (CS high) so it stays quiet on the shared SPI bus
-    // during boot. This prevents it from corrupting the display init sequence.
+    // Keep the SD card deselected (CS high) so it stays quiet on the shared SPI bus
     pinMode(SDCARD_CS, OUTPUT);
     digitalWrite(SDCARD_CS, HIGH);
 
@@ -55,7 +54,6 @@ void _setup_gpio() {
 
 void _post_setup_gpio() {}
 
-// Retro-Go target has no battery ADC: fixed at 100%
 int getBattery() { return 100; }
 
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
@@ -81,13 +79,19 @@ bool checkButton(ButtonState &btn, int pin) {
 }
 
 void InputHandler(void) {
+    // --- Heartbeat Test ---
+    static unsigned long lastBeat = 0;
+    if (millis() - lastBeat > 2000) {
+        lastBeat = millis();
+        Serial.printf("alive %lu\n", millis());
+    }
+
     unsigned long now = millis();
     PrevPress = false;
     NextPress = false;
     SelPress = false;
     EscPress = false;
 
-    // wakeUpScreen() returns true if the screen was asleep: that press only wakes it
     if (checkButton(btnUp, BTN_UP)) {
         if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; }
     }
@@ -110,10 +114,9 @@ void InputHandler(void) {
         if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; }
     }
     if (checkButton(btnStart, BTN_START)) {
-        wakeUpScreen(); // short press only wakes the screen
+        wakeUpScreen();
     }
 
-    // Hold START = power off
     if (digitalRead(BTN_START) == LOW && !btnStart.longPressed &&
         (now - btnStart.pressTime > longPressTime)) {
         btnStart.longPressed = true;
@@ -123,12 +126,8 @@ void InputHandler(void) {
 
 void powerOff() {
     digitalWrite(TFT_BL, LOW);
-
-    // Release START and A first, otherwise the wake-up fires immediately
     while (digitalRead(BTN_START) == LOW) delay(10);
     while (digitalRead(BTN_A) == LOW) delay(10);
-
-    // GPIO15 is RTC-capable on the ESP32-S3: press A (to GND) to wake up
     rtc_gpio_pullup_en((gpio_num_t)BTN_A);
     rtc_gpio_pulldown_dis((gpio_num_t)BTN_A);
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BTN_A, 0);
