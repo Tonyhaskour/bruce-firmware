@@ -2,7 +2,6 @@
 #include "core/powerSave.h"
 #include "core/utils.h"
 #include <Arduino.h>
-#include <SPI.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
@@ -31,25 +30,15 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T6: setup_gpio <<<");
+    Serial.println(">>> BUILD-T8: setup_gpio <<<");
     
-    // 1. Deselect both TFT and SD so they don't interfere
+    // 1. Deselect both TFT and SD so they don't interfere during boot
     pinMode(45, OUTPUT); // TFT_CS
     digitalWrite(45, HIGH);
-    pinMode(SDCARD_CS, OUTPUT);
-    digitalWrite(SDCARD_CS, HIGH);
+    pinMode(1, OUTPUT);  // SDCARD_CS
+    digitalWrite(1, HIGH);
     
-    // 2. Pull up the shared MISO pin
-    pinMode(SDCARD_MISO, INPUT_PULLUP);
-    
-    // 3. Manually start the SPI bus (SCLK=40, MISO=41, MOSI=42, SS=45)
-    // This fixes the SD card mount issue BEFORE the display initializes
-    SPI.begin(40, 41, 42, 45);
-    
-    // 4. Give the SD card a moment to power up
-    delay(100);
-
-    // 5. Setup your buttons
+    // 2. Setup your buttons
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -59,21 +48,21 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // 6. Turn on backlight
-    pinMode(TFT_BL, OUTPUT);
-    digitalWrite(TFT_BL, HIGH);
+    // 3. Turn on backlight
+    pinMode(2, OUTPUT);
+    digitalWrite(2, HIGH);
 
     bruceConfig.colorInverted = 0;
     bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T6: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T8: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
 int getBattery() { return 100; }
-void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
+void _setBrightness(uint8_t brightval) { analogWrite(2, brightval); }
 
 bool checkButton(ButtonState &btn, int pin) {
     bool reading = digitalRead(pin);
@@ -118,7 +107,7 @@ void InputHandler(void) {
 }
 
 void powerOff() {
-    digitalWrite(TFT_BL, LOW);
+    digitalWrite(2, LOW);
     while (digitalRead(BTN_START) == LOW) delay(10);
     while (digitalRead(BTN_A) == LOW) delay(10);
     rtc_gpio_pullup_en((gpio_num_t)BTN_A);
