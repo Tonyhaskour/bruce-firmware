@@ -2,16 +2,18 @@
 #include "core/powerSave.h"
 #include "core/utils.h"
 #include <Arduino.h>
+#include <driver/rtc_io.h>
+#include <esp_sleep.h>
 
-// --- 8 Physical Buttons from your Retro-Go Wiring ---
-#define BTN_UP     38  // Menu Up
-#define BTN_DOWN   39  // Menu Down
-#define BTN_LEFT   4   // Back / Escape
-#define BTN_RIGHT  5   // Secondary Down / Next
-#define BTN_A      15  // Primary Select / OK
-#define BTN_B      16  // Secondary Back
-#define BTN_START  48  // Home / Long press to Power Off (Deep Sleep)
-#define BTN_SELECT 47  // Secondary Select
+// --- 8 buttons, identical to the Retro-Go RG_GAMEPAD_GPIO_MAP ---
+#define BTN_UP     38  // Prev / Up
+#define BTN_DOWN   39  // Next / Down
+#define BTN_LEFT   4   // Back
+#define BTN_RIGHT  5   // Next (secondary)
+#define BTN_A      15  // Select / OK (also the wake-up button)
+#define BTN_B      16  // Back (secondary)
+#define BTN_START  48  // Hold = power off (deep sleep)
+#define BTN_SELECT 47  // Select (secondary)
 
 const unsigned long debounceDelay = 50;
 const unsigned long longPressTime = 600;
@@ -24,7 +26,9 @@ struct ButtonState {
     bool longPressed = false;
 };
 
-ButtonState up, down, left, right, a, b, start, btnSelect;
+ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
+
+void powerOff();
 
 void _setup_gpio() {
     pinMode(BTN_UP, INPUT_PULLUP);
@@ -36,7 +40,7 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // Turn on the backlight (Pin 2 is handled by platformio.ini)
+    // TFT_BL (pin 2) comes from platformio.ini - do not redefine it here
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
 
@@ -46,8 +50,9 @@ void _setup_gpio() {
 
 void _post_setup_gpio() {}
 
-// Hardcoded to 100% because your Retro-Go target doesn't define a battery ADC pin
-int getBattery() { return 100; } 
+// Retro-Go target has no battery ADC: fixed at 100%
+int getBattery() { return 100; }
+
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
 bool checkButton(ButtonState &btn, int pin) {
@@ -55,64 +60,74 @@ bool checkButton(ButtonState &btn, int pin) {
     if (reading != btn.lastReading) {
         btn.lastDebounceTime = millis();
     }
+    btn.lastReading = reading;
+
     if ((millis() - btn.lastDebounceTime) > debounceDelay) {
         if (reading != btn.stableState) {
             btn.stableState = reading;
             if (btn.stableState == LOW) {
                 btn.pressTime = millis();
                 btn.longPressed = false;
-                return true; // Button was pressed
+                return true;
             }
         }
     }
-    btn.lastReading = reading;
     return false;
 }
 
 void InputHandler(void) {
     unsigned long now = millis();
-    PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
+    PrevPress = false;
+    NextPress = false;
+    SelPress = false;
+    EscPress = false;
 
-    // The wakeUpScreen() check ensures that if the screen is asleep, pressing a button 
-    // only wakes it up, rather than triggering a menu navigation action.
-    if (checkButton(up, BTN_UP)) {
+    // wakeUpScreen() returns true if the screen was asleep: that press only wakes it
+    if (checkButton(btnUp, BTN_UP)) {
         if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(down, BTN_DOWN)) {
+    if (checkButton(btnDown, BTN_DOWN)) {
         if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(left, BTN_LEFT)) {
-        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } // Back
+    if (checkButton(btnLeft, BTN_LEFT)) {
+        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(right, BTN_RIGHT)) {
-        if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } // Secondary Down
+    if (checkButton(btnRight, BTN_RIGHT)) {
+        if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(a, BTN_A)) {
-        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } // Confirm
+    if (checkButton(btnA, BTN_A)) {
+        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(b, BTN_B)) {
-        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } // Secondary Back
+    if (checkButton(btnB, BTN_B)) {
+        if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(btnSelect, BTN_SELECT)) {
-        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } // Secondary Confirm
+    if (checkButton(btnSel, BTN_SELECT)) {
+        if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; }
     }
-    if (checkButton(start, BTN_START)) {
-        if (!wakeUpScreen()) { 
-            // Short press of START can be mapped to Quick Access if desired
-            // OpenQuickAccess = true; AnyKeyPress = true; 
-        }
+    if (checkButton(btnStart, BTN_START)) {
+        wakeUpScreen(); // short press only wakes the screen
     }
 
-    // Long press START for Deep Sleep (Power Off)
-    if (digitalRead(BTN_START) == LOW && !start.longPressed && (now - start.pressTime > longPressTime)) {
-        start.longPressed = true;
+    // Hold START = power off
+    if (digitalRead(BTN_START) == LOW && !btnStart.longPressed &&
+        (now - btnStart.pressTime > longPressTime)) {
+        btnStart.longPressed = true;
         powerOff();
     }
 }
 
 void powerOff() {
-    analogWrite(TFT_BL, 0); // Turn off backlight
-    esp_deep_sleep_start(); // Put ESP32 to sleep
+    digitalWrite(TFT_BL, LOW);
+
+    // Release START and A first, otherwise the wake-up fires immediately
+    while (digitalRead(BTN_START) == LOW) delay(10);
+    while (digitalRead(BTN_A) == LOW) delay(10);
+
+    // GPIO15 is RTC-capable on the ESP32-S3: press A (to GND) to wake up
+    rtc_gpio_pullup_en((gpio_num_t)BTN_A);
+    rtc_gpio_pulldown_dis((gpio_num_t)BTN_A);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)BTN_A, 0);
+    esp_deep_sleep_start();
 }
 
 void checkReboot() {}
