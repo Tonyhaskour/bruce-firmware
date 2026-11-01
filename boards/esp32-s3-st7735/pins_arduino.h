@@ -1,7 +1,6 @@
 #pragma once
 #include "soc/soc_caps.h"
 
-// Define the standard Arduino core pins so SPI.cpp and Wire.cpp compile
 #define SDA  18
 #define SCL  8
 #define SCK  40
