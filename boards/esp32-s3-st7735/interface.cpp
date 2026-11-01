@@ -5,6 +5,8 @@
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
+#define TFT_BL 2
+
 #define BTN_UP     38
 #define BTN_DOWN   39
 #define BTN_LEFT   4
@@ -30,15 +32,11 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T8: setup_gpio <<<");
+    Serial.println(">>> BUILD-T9: setup_gpio <<<");
     
-    // 1. Deselect both TFT and SD so they don't interfere during boot
-    pinMode(45, OUTPUT); // TFT_CS
-    digitalWrite(45, HIGH);
-    pinMode(1, OUTPUT);  // SDCARD_CS
-    digitalWrite(1, HIGH);
-    
-    // 2. Setup your buttons
+    // DO NOT touch TFT_CS (45) or SDCARD_CS (1) here. 
+    // They are strapping pins and manipulating them this early causes crashes.
+
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -48,21 +46,20 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // 3. Turn on backlight
-    pinMode(2, OUTPUT);
-    digitalWrite(2, HIGH);
+    pinMode(TFT_BL, OUTPUT);
+    digitalWrite(TFT_BL, HIGH);
 
     bruceConfig.colorInverted = 0;
     bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T8: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T9: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
 int getBattery() { return 100; }
-void _setBrightness(uint8_t brightval) { analogWrite(2, brightval); }
+void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
 bool checkButton(ButtonState &btn, int pin) {
     bool reading = digitalRead(pin);
@@ -107,7 +104,7 @@ void InputHandler(void) {
 }
 
 void powerOff() {
-    digitalWrite(2, LOW);
+    digitalWrite(TFT_BL, LOW);
     while (digitalRead(BTN_START) == LOW) delay(10);
     while (digitalRead(BTN_A) == LOW) delay(10);
     rtc_gpio_pullup_en((gpio_num_t)BTN_A);
