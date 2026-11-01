@@ -30,10 +30,17 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T4: setup_gpio <<<");
+    Serial.println(">>> BUILD-T5: setup_gpio <<<");
     
+    // Keep SD Card CS high so it doesn't interfere
     pinMode(SDCARD_CS, OUTPUT);
     digitalWrite(SDCARD_CS, HIGH);
+
+    // CRITICAL FIX: Initialize the TFT before Bruce tries to mount the SD card.
+    // This starts the SPI bus so the SD card can communicate.
+    tft.init();
+    tft.setRotation(bruceConfigPins.rotation);
+    tft.fillScreen(TFT_BLACK);
 
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
@@ -52,7 +59,7 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T4: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T5: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
