@@ -5,8 +5,6 @@
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
-#define TFT_BL 2
-
 #define BTN_UP     38
 #define BTN_DOWN   39
 #define BTN_LEFT   4
@@ -32,11 +30,8 @@ ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T9: setup_gpio <<<");
+    Serial.println(">>> BUILD-T10: setup_gpio <<<");
     
-    // DO NOT touch TFT_CS (45) or SDCARD_CS (1) here. 
-    // They are strapping pins and manipulating them this early causes crashes.
-
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -46,15 +41,13 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
+    // TFT_BL is defined in platformio.ini as pin 2
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
-
-    bruceConfig.colorInverted = 0;
-    bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T9: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T10: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
