@@ -14,24 +14,13 @@
 #define BTN_START  48
 #define BTN_SELECT 47
 
-const unsigned long debounceDelay = 50;
-const unsigned long longPressTime = 600;
-
-struct ButtonState {
-    bool lastReading = HIGH;
-    bool stableState = HIGH;
-    unsigned long lastDebounceTime = 0;
-    unsigned long pressTime = 0;
-    bool longPressed = false;
-};
-
-ButtonState btnUp, btnDown, btnLeft, btnRight, btnA, btnB, btnStart, btnSel;
-
-void powerOff();
-
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T10: setup_gpio <<<");
+    Serial.println(">>> BUILD-T11: setup_gpio <<<");
     
+    // Initialize ADC (Bruce's core requires this to prevent crashes)
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);
+
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -41,31 +30,39 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
-    // TFT_BL is defined in platformio.ini as pin 2
+    // TFT_BL is defined in pins_arduino.h as 2
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
+
+    bruceConfig.colorInverted = 0;
+    bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T10: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-T11: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
 int getBattery() { return 100; }
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL, brightval); }
 
-bool checkButton(ButtonState &btn, int pin) {
+bool lastUp = HIGH, stableUp = HIGH; unsigned long lastUpTime = 0;
+bool lastDown = HIGH, stableDown = HIGH; unsigned long lastDownTime = 0;
+bool lastLeft = HIGH, stableLeft = HIGH; unsigned long lastLeftTime = 0;
+bool lastRight = HIGH, stableRight = HIGH; unsigned long lastRightTime = 0;
+bool lastA = HIGH, stableA = HIGH; unsigned long lastATime = 0;
+bool lastB = HIGH, stableB = HIGH; unsigned long lastBTime = 0;
+bool lastStart = HIGH, stableStart = HIGH; unsigned long lastStartTime = 0;
+bool lastSelect = HIGH, stableSelect = HIGH; unsigned long lastSelectTime = 0;
+
+bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin) {
     bool reading = digitalRead(pin);
-    if (reading != btn.lastReading) { btn.lastDebounceTime = millis(); }
-    btn.lastReading = reading;
-    if ((millis() - btn.lastDebounceTime) > debounceDelay) {
-        if (reading != btn.stableState) {
-            btn.stableState = reading;
-            if (btn.stableState == LOW) {
-                btn.pressTime = millis();
-                btn.longPressed = false;
-                return true;
-            }
+    if (reading != last) { lastTime = millis(); }
+    last = reading;
+    if ((millis() - lastTime) > 50) {
+        if (reading != stable) {
+            stable = reading;
+            if (stable == LOW) return true;
         }
     }
     return false;
@@ -78,20 +75,19 @@ void InputHandler(void) {
         Serial.printf("alive %lu\n", millis());
     }
 
-    unsigned long now = millis();
     PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
 
-    if (checkButton(btnUp, BTN_UP)) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnDown, BTN_DOWN)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnLeft, BTN_LEFT)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnRight, BTN_RIGHT)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnA, BTN_A)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnB, BTN_B)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnSel, BTN_SELECT)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
-    if (checkButton(btnStart, BTN_START)) { wakeUpScreen(); }
+    if (checkButton(lastUp, stableUp, lastUpTime, BTN_UP)) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastDown, stableDown, lastDownTime, BTN_DOWN)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastLeft, stableLeft, lastLeftTime, BTN_LEFT)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT)) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastA, stableA, lastATime, BTN_A)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastB, stableB, lastBTime, BTN_B)) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
+    if (checkButton(lastSelect, stableSelect, lastSelectTime, BTN_SELECT)) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
+    
+    checkButton(lastStart, stableStart, lastStartTime, BTN_START);
 
-    if (digitalRead(BTN_START) == LOW && !btnStart.longPressed && (now - btnStart.pressTime > longPressTime)) {
-        btnStart.longPressed = true;
+    if (digitalRead(BTN_START) == LOW && (millis() - lastStartTime > 600)) {
         powerOff();
     }
 }
