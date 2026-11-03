@@ -5,15 +5,14 @@
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
-// --- Retro-Go Wiring Buttons ---
 #define BTN_UP     38  
 #define BTN_DOWN   39  
-#define BTN_LEFT   4   // Back
-#define BTN_RIGHT  5   // Secondary Next
-#define BTN_A      15  // Select
-#define BTN_B      16  // Secondary Back
-#define BTN_START  48  // Power off
-#define BTN_SELECT 47  // Secondary Select
+#define BTN_LEFT   4   
+#define BTN_RIGHT  5   
+#define BTN_A      15  
+#define BTN_B      16  
+#define BTN_START  48  
+#define BTN_SELECT 47  
 
 #define SDCARD_CS_PIN 1
 #define TFT_BL_PIN 2
@@ -21,7 +20,7 @@
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-IMAGE-FIX: setup_gpio <<<");
+    Serial.println(">>> BUILD-FINAL-FIX: setup_gpio <<<");
     
     analogReadResolution(12);
     analogSetAttenuation(ADC_11db);
@@ -73,12 +72,20 @@ bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin, con
 }
 
 void InputHandler(void) {
-    PrevPress = false; NextPress = false; SelPress = false; EscPress = false;
+    // Reset all navigation flags for this frame
+    PrevPress = false; 
+    NextPress = false; 
+    SelPress = false; 
+    EscPress = false;
+    DownPress = false;
 
     if (checkButton(lastUp, stableUp, lastUpTime, BTN_UP, "UP")) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
     if (checkButton(lastDown, stableDown, lastDownTime, BTN_DOWN, "DOWN")) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
     if (checkButton(lastLeft, stableLeft, lastLeftTime, BTN_LEFT, "LEFT")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
-    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT, "RIGHT")) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    
+    // RIGHT button mapped to DownPress for text input/terminal support
+    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT, "RIGHT")) { if (!wakeUpScreen()) { DownPress = true; AnyKeyPress = true; } }
+    
     if (checkButton(lastA, stableA, lastATime, BTN_A, "A")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
     if (checkButton(lastB, stableB, lastBTime, BTN_B, "B")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
     if (checkButton(lastSelect, stableSelect, lastSelectTime, BTN_SELECT, "SELECT")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
