@@ -5,25 +5,33 @@
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 
-#define BTN_UP     38
-#define BTN_DOWN   39
-#define BTN_LEFT   4
-#define BTN_RIGHT  5
-#define BTN_A      15
-#define BTN_B      16
-#define BTN_START  48
-#define BTN_SELECT 47
+// --- Retro-Go Wiring Buttons ---
+#define BTN_UP     38  
+#define BTN_DOWN   39  
+#define BTN_LEFT   4   // Back
+#define BTN_RIGHT  5   // Secondary Next
+#define BTN_A      15  // Select
+#define BTN_B      16  // Secondary Back
+#define BTN_START  48  // Power off
+#define BTN_SELECT 47  // Secondary Select
 
 #define SDCARD_CS_PIN 1
 #define TFT_BL_PIN 2
 
+void powerOff();
+
 void _setup_gpio() {
-    Serial.println(">>> BUILD-T12: setup_gpio <<<");
+    Serial.println(">>> BUILD-FINAL: setup_gpio <<<");
     
-    // Deselect SD Card so it doesn't interfere with the boot
+    // 1. Initialize ADC (Required by Bruce's core)
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);
+
+    // 2. Deselect SD Card
     pinMode(SDCARD_CS_PIN, OUTPUT);
     digitalWrite(SDCARD_CS_PIN, HIGH);
 
+    // 3. Setup Buttons
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_LEFT, INPUT_PULLUP);
@@ -33,12 +41,17 @@ void _setup_gpio() {
     pinMode(BTN_START, INPUT_PULLUP);
     pinMode(BTN_SELECT, INPUT_PULLUP);
 
+    // 4. Setup Backlight
     pinMode(TFT_BL_PIN, OUTPUT);
     digitalWrite(TFT_BL_PIN, HIGH);
+
+    // 5. Apply Bruce Configuration (Required by core)
+    bruceConfig.colorInverted = 0;
+    bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
-    Serial.printf(">>> BUILD-T12: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
+    Serial.printf(">>> BUILD-FINAL: post_setup_gpio, PSRAM=%u free heap=%u <<<\n",
                   (unsigned)ESP.getPsramSize(), (unsigned)ESP.getFreeHeap());
 }
 
