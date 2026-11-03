@@ -44,10 +44,6 @@ void _setup_gpio() {
     // 4. Setup Backlight
     pinMode(TFT_BL_PIN, OUTPUT);
     digitalWrite(TFT_BL_PIN, HIGH);
-
-    // 5. Apply Bruce Configuration (Required by core)
-    bruceConfig.colorInverted = 0;
-    bruceConfigPins.rotation = 1;
 }
 
 void _post_setup_gpio() {
