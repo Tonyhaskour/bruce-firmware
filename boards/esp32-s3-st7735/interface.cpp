@@ -79,15 +79,31 @@ void InputHandler(void) {
     EscPress = false;
     DownPress = false;
 
+    // UP -> Move Up / Previous
     if (checkButton(lastUp, stableUp, lastUpTime, BTN_UP, "UP")) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
+    
+    // DOWN -> Move Down / Next
     if (checkButton(lastDown, stableDown, lastDownTime, BTN_DOWN, "DOWN")) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
+    
+    // LEFT -> Back / Exit
     if (checkButton(lastLeft, stableLeft, lastLeftTime, BTN_LEFT, "LEFT")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
     
-    // RIGHT button mapped to DownPress for text input/terminal support
-    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT, "RIGHT")) { if (!wakeUpScreen()) { DownPress = true; AnyKeyPress = true; } }
+    // RIGHT -> Next (in menus) AND Down (in keyboards)
+    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT, "RIGHT")) { 
+        if (!wakeUpScreen()) { 
+            NextPress = true; 
+            DownPress = true; 
+            AnyKeyPress = true; 
+        } 
+    }
     
+    // A -> Select / OK
     if (checkButton(lastA, stableA, lastATime, BTN_A, "A")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
+    
+    // B -> Back / Exit
     if (checkButton(lastB, stableB, lastBTime, BTN_B, "B")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
+    
+    // SELECT -> Select / OK
     if (checkButton(lastSelect, stableSelect, lastSelectTime, BTN_SELECT, "SELECT")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
     
     checkButton(lastStart, stableStart, lastStartTime, BTN_START, "START");
