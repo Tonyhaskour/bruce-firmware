@@ -1,6 +1,8 @@
 #include "../src/modules/others/battery_information.h"
 #include "core/powerSave.h"
 #include "core/utils.h"
+#include "core/display.h"
+#include <globals.h>
 #include <Arduino.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
@@ -20,7 +22,7 @@
 void powerOff();
 
 void _setup_gpio() {
-    Serial.println(">>> BUILD-FINAL-FIX: setup_gpio <<<");
+    Serial.println(">>> BUILD-POST-SETUP-FIX: setup_gpio <<<");
     
     analogReadResolution(12);
     analogSetAttenuation(ADC_11db);
@@ -41,7 +43,34 @@ void _setup_gpio() {
     digitalWrite(TFT_BL_PIN, HIGH);
 }
 
-void _post_setup_gpio() {}
+void _post_setup_gpio() {
+    // Force the orientation used by your Retro-Go target
+    bruceConfigPins.rotation = 1;
+    tft.setRotation(1);
+
+    // Force display inversion ON to change the white background
+    // to the intended dark background
+    bruceConfig.colorInverted = 1;
+    tft.invertDisplay(1);
+
+    // Update Bruce's display dimensions after rotation
+    tftWidth = tft.width();
+    tftHeight = tft.height();
+
+    Serial.printf(
+        "DISPLAY FIX: rotation=%u inversion=%u width=%d height=%d\n",
+        (unsigned)bruceConfigPins.rotation,
+        (unsigned)bruceConfig.colorInverted,
+        (int)tftWidth,
+        (int)tftHeight
+    );
+
+    Serial.printf(
+        "PSRAM=%u FREE_HEAP=%u\n",
+        (unsigned)ESP.getPsramSize(),
+        (unsigned)ESP.getFreeHeap()
+    );
+}
 
 int getBattery() { return 100; }
 void _setBrightness(uint8_t brightval) { analogWrite(TFT_BL_PIN, brightval); }
@@ -55,7 +84,7 @@ bool lastB = HIGH, stableB = HIGH; unsigned long lastBTime = 0;
 bool lastStart = HIGH, stableStart = HIGH; unsigned long lastStartTime = 0;
 bool lastSelect = HIGH, stableSelect = HIGH; unsigned long lastSelectTime = 0;
 
-bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin, const char* name) {
+bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin) {
     bool reading = digitalRead(pin);
     if (reading != last) { lastTime = millis(); }
     last = reading;
@@ -63,7 +92,6 @@ bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin, con
         if (reading != stable) {
             stable = reading;
             if (stable == LOW) {
-                Serial.printf("Button Pressed: %s (Pin %d)\n", name, pin);
                 return true;
             }
         }
@@ -72,41 +100,47 @@ bool checkButton(bool &last, bool &stable, unsigned long &lastTime, int pin, con
 }
 
 void InputHandler(void) {
-    // Reset all navigation flags for this frame
-    PrevPress = false; 
-    NextPress = false; 
-    SelPress = false; 
-    EscPress = false;
-    DownPress = false;
+    static unsigned long lastBeat = 0;
 
-    // UP -> Move Up / Previous
-    if (checkButton(lastUp, stableUp, lastUpTime, BTN_UP, "UP")) { if (!wakeUpScreen()) { PrevPress = true; AnyKeyPress = true; } }
-    
-    // DOWN -> Move Down / Next
-    if (checkButton(lastDown, stableDown, lastDownTime, BTN_DOWN, "DOWN")) { if (!wakeUpScreen()) { NextPress = true; AnyKeyPress = true; } }
-    
-    // LEFT -> Back / Exit
-    if (checkButton(lastLeft, stableLeft, lastLeftTime, BTN_LEFT, "LEFT")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
-    
-    // RIGHT -> Next (in menus) AND Down (in keyboards)
-    if (checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT, "RIGHT")) { 
-        if (!wakeUpScreen()) { 
-            NextPress = true; 
-            DownPress = true; 
-            AnyKeyPress = true; 
-        } 
+    if (millis() - lastBeat > 2000) {
+        lastBeat = millis();
+        Serial.printf("alive %lu\n", millis());
     }
-    
-    // A -> Select / OK
-    if (checkButton(lastA, stableA, lastATime, BTN_A, "A")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
-    
-    // B -> Back / Exit
-    if (checkButton(lastB, stableB, lastBTime, BTN_B, "B")) { if (!wakeUpScreen()) { EscPress = true; AnyKeyPress = true; } }
-    
-    // SELECT -> Select / OK
-    if (checkButton(lastSelect, stableSelect, lastSelectTime, BTN_SELECT, "SELECT")) { if (!wakeUpScreen()) { SelPress = true; AnyKeyPress = true; } }
-    
-    checkButton(lastStart, stableStart, lastStartTime, BTN_START, "START");
+
+    // Reset navigation flags
+    PrevPress = false;
+    NextPress = false;
+    UpPress = false;
+    DownPress = false;
+    SelPress = false;
+    EscPress = false;
+
+    // Read the physical buttons
+    bool up = checkButton(lastUp, stableUp, lastUpTime, BTN_UP);
+    bool down = checkButton(lastDown, stableDown, lastDownTime, BTN_DOWN);
+    bool left = checkButton(lastLeft, stableLeft, lastLeftTime, BTN_LEFT);
+    bool right = checkButton(lastRight, stableRight, lastRightTime, BTN_RIGHT);
+    bool a = checkButton(lastA, stableA, lastATime, BTN_A);
+    bool b = checkButton(lastB, stableB, lastBTime, BTN_B);
+    bool sel = checkButton(lastSelect, stableSelect, lastSelectTime, BTN_SELECT);
+
+    // Handle a press only after the display wake-up check
+    if (up || down || left || right || a || b || sel) {
+        if (!wakeUpScreen()) {
+            AnyKeyPress = true;
+
+            if (up) UpPress = true;
+            if (down) DownPress = true;
+            if (left) PrevPress = true;
+            if (right) NextPress = true;
+
+            if (a || sel) SelPress = true;
+            if (b) EscPress = true;
+        }
+    }
+
+    // START: hold for 600 ms to power off
+    checkButton(lastStart, stableStart, lastStartTime, BTN_START);
 
     if (digitalRead(BTN_START) == LOW && (millis() - lastStartTime > 600)) {
         powerOff();
