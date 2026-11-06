@@ -70,7 +70,6 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    // Restore the 180-degree rotation fix and keep the purple colors
     bruceConfigPins.rotation = 3;
     tft.setRotation(3);
 
@@ -142,21 +141,26 @@ void InputHandler(void) {
     bool start = rgKeyEvent(rgKeys[RG_START], now, false);
 
     if (rgKeys[RG_START].stable == LOW && (now - rgKeys[RG_START].pressedAt) >= RG_POWEROFF_MS) powerOff();
+    
+    // A short tap on START just wakes the screen
     if (start) wakeUpScreen();
 
     if (!(up || down || left || right || a || b || sel)) return;
 
     Serial.printf("BTN: U%d D%d L%d R%d A%d B%d S%d\n", up, down, left, right, a, b, sel);
 
-    // CRITICAL FIX: Do NOT discard the button press if the screen was asleep.
-    wakeUpScreen(); 
     AnyKeyPress = true;
 
-    // Universal mapping exactly as requested by the upstream source
-    if (up) UpPress = true;
-    if (down) DownPress = true;
-    if (left) PrevPress = true;
-    if (right) NextPress = true;
+    // The exact original developer joystick logic
+    if (menuOptionLabel == "Main Menu") {
+        if (left) PrevPress = true;
+        if (right) NextPress = true;
+    } else {
+        if (up) PrevPress = true;
+        if (down) NextPress = true;
+        if (left) EscPress = true;
+        if (right) DownPress = true;
+    }
 
     if (a || sel) SelPress = true;
     if (b) EscPress = true;
