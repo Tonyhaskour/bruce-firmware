@@ -70,9 +70,18 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    // Force the colors back to purple/black. Do NOT force rotation here!
+    // Restore the 180-degree rotation fix and keep the purple colors
+    bruceConfigPins.rotation = 3;
+    tft.setRotation(3);
+
     bruceConfig.colorInverted = 0;
     tft.invertDisplay(false);
+
+    tftWidth = tft.width();
+    tftHeight = tft.height();
+
+    Serial.printf("DISPLAY: rot=%u W=%d H=%d\n",
+                  tft.getRotation(), tftWidth, tftHeight);
 }
 
 int getBattery() { return 100; }
@@ -139,19 +148,20 @@ void InputHandler(void) {
 
     Serial.printf("BTN: U%d D%d L%d R%d A%d B%d S%d\n", up, down, left, right, a, b, sel);
 
-    // DO NOT return if the screen was asleep. Let the press register!
-    wakeUpScreen(); 
+    if (wakeUpScreen()) return; 
+
     AnyKeyPress = true;
 
-    // Use the EXACT original joystick logic so the keyboard works
+    // The Key Fix: Use UpPress/DownPress for submenus (keyboard), 
+    // and PrevPress/NextPress for the Main Menu.
     if (menuOptionLabel == "Main Menu") {
         if (up || left) PrevPress = true;
         if (down || right) NextPress = true;
     } else {
-        if (up) PrevPress = true;
-        if (down) NextPress = true;
-        if (left) EscPress = true;
-        if (right) DownPress = true;
+        if (up) UpPress = true;
+        if (down) DownPress = true;
+        if (left) PrevPress = true;
+        if (right) NextPress = true;
     }
 
     if (a || sel) SelPress = true;
