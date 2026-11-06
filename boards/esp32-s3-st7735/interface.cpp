@@ -70,7 +70,7 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    // The EXACT fix from the text file to correct the theme without breaking the keyboard
+    // Force the colors back to purple/black. Do NOT force rotation here!
     bruceConfig.colorInverted = 0;
     tft.invertDisplay(false);
 }
@@ -137,17 +137,22 @@ void InputHandler(void) {
 
     if (!(up || down || left || right || a || b || sel)) return;
 
-    // Debug print to prove buttons work during Wi-Fi password entry
     Serial.printf("BTN: U%d D%d L%d R%d A%d B%d S%d\n", up, down, left, right, a, b, sel);
 
+    // DO NOT return if the screen was asleep. Let the press register!
     wakeUpScreen(); 
-
     AnyKeyPress = true;
 
-    if (up) UpPress = true;
-    if (down) DownPress = true;
-    if (left) PrevPress = true;
-    if (right) NextPress = true;
+    // Use the EXACT original joystick logic so the keyboard works
+    if (menuOptionLabel == "Main Menu") {
+        if (up || left) PrevPress = true;
+        if (down || right) NextPress = true;
+    } else {
+        if (up) PrevPress = true;
+        if (down) NextPress = true;
+        if (left) EscPress = true;
+        if (right) DownPress = true;
+    }
 
     if (a || sel) SelPress = true;
     if (b) EscPress = true;
