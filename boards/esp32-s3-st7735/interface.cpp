@@ -1,8 +1,6 @@
 #include "../src/modules/others/battery_information.h"
 #include "core/powerSave.h"
 #include "core/utils.h"
-#include "core/display.h"
-#include <globals.h>
 #include <Arduino.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
@@ -72,20 +70,9 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    // FORCE the screen settings AFTER Bruce loads the SD card config!
-    bruceConfigPins.rotation = 3; // If upside down, change this to 1
-    tft.setRotation(3);           // If upside down, change this to 1
-
-    bruceConfig.colorInverted = 1;
-    tft.invertDisplay(1);
-
-    tftWidth = tft.width();
-    tftHeight = tft.height();
-
-    Serial.printf("DISPLAY FIX: rot=%u inv=%u W=%d H=%d\n",
-        (unsigned)bruceConfigPins.rotation,
-        (unsigned)bruceConfig.colorInverted,
-        (int)tftWidth, (int)tftHeight);
+    // The EXACT fix from the text file to correct the theme without breaking the keyboard
+    bruceConfig.colorInverted = 0;
+    tft.invertDisplay(false);
 }
 
 int getBattery() { return 100; }
@@ -150,13 +137,13 @@ void InputHandler(void) {
 
     if (!(up || down || left || right || a || b || sel)) return;
 
-    // Do NOT block the button press if the screen was asleep. 
-    // Wake it up, but let the keypress register.
+    // Debug print to prove buttons work during Wi-Fi password entry
+    Serial.printf("BTN: U%d D%d L%d R%d A%d B%d S%d\n", up, down, left, right, a, b, sel);
+
     wakeUpScreen(); 
 
     AnyKeyPress = true;
 
-    // The correct 4-way mapping for Bruce's keyboard and menus
     if (up) UpPress = true;
     if (down) DownPress = true;
     if (left) PrevPress = true;
