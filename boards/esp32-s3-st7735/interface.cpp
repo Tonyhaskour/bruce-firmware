@@ -70,7 +70,7 @@ void _setup_gpio() {
 }
 
 void _post_setup_gpio() {
-    // Restore the rotation fix and keep the purple colors
+    // Restore the 180-degree rotation fix and keep the purple colors
     bruceConfigPins.rotation = 3;
     tft.setRotation(3);
 
@@ -148,20 +148,15 @@ void InputHandler(void) {
 
     Serial.printf("BTN: U%d D%d L%d R%d A%d B%d S%d\n", up, down, left, right, a, b, sel);
 
-    // DO NOT return here. Wake the screen AND process the keypress.
+    // CRITICAL FIX: Do NOT discard the button press if the screen was asleep.
     wakeUpScreen(); 
     AnyKeyPress = true;
 
-    // The exact mapping the keyboard expects
-    if (menuOptionLabel == "Main Menu") {
-        if (up || left) PrevPress = true;
-        if (down || right) NextPress = true;
-    } else {
-        if (up) UpPress = true;
-        if (down) DownPress = true;
-        if (left) PrevPress = true;
-        if (right) NextPress = true;
-    }
+    // Universal mapping exactly as requested by the upstream source
+    if (up) UpPress = true;
+    if (down) DownPress = true;
+    if (left) PrevPress = true;
+    if (right) NextPress = true;
 
     if (a || sel) SelPress = true;
     if (b) EscPress = true;
