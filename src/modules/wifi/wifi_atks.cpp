@@ -638,7 +638,7 @@ void capture_handshake(String tssid, String mac, uint8_t channel) {
             tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
             padprintln("");
             padprintln("SSID: " + tssid);
-            padprintln("BSSID: " + mac);
+            padprintln("BSSID " + mac);
             padprintln("Security: " + encryptionTypeStr);
             padprintln("");
 
