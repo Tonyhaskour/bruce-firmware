@@ -634,7 +634,7 @@ void capture_handshake(String tssid, String mac, uint8_t channel) {
         }
 
         if (needRedraw) {
-            drawMainBorderWithTitle("Handshake Capture");
+            drawMainBorderWithTitle("TEST99 HANDSHAKE");
             tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
             padprintln("");
             padprintln("SSID: " + tssid);
