@@ -398,8 +398,8 @@ void padprintln(const String &s, int16_t padx) {
 
     String buff;
     size_t start = 0;
-    // FIXED: Use tft.textsize instead of FP to calculate line wrap correctly
-    int _maxCharsInLine = (tftWidth - (padx + 1) * BORDER_PAD_X) / (tft.textsize * LW);
+    // FIXED: Use tft.getTextSize() instead of FP to calculate line wrap correctly
+    int _maxCharsInLine = (tftWidth - (padx + 1) * BORDER_PAD_X) / (tft.getTextSize() * LW);
 
     // automatically split into multiple lines
     while (!(buff = s.substring(start, start + _maxCharsInLine)).isEmpty()) {
@@ -417,8 +417,8 @@ void padprintln(const char str[], int16_t padx) {
 
     String buff;
     size_t start = 0;
-    // FIXED: Use tft.textsize instead of FP to calculate line wrap correctly
-    int _maxCharsInLine = (tftWidth - (padx + 1) * BORDER_PAD_X) / (tft.textsize * LW);
+    // FIXED: Use tft.getTextSize() instead of FP to calculate line wrap correctly
+    int _maxCharsInLine = (tftWidth - (padx + 1) * BORDER_PAD_X) / (tft.getTextSize() * LW);
 
     // automatically split into multiple lines
     while (!(buff = String(str).substring(start, start + _maxCharsInLine)).isEmpty()) {
