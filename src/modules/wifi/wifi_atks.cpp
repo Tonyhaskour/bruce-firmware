@@ -609,7 +609,8 @@ void capture_handshake(String tssid, String mac, uint8_t channel) {
     bool hasBeacons = false;
 
     tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-    tft.setTextSize(FM);
+    // FIX: use dynamic text size so it fits on small screens
+    tft.setTextSize(tftHeight > 135 ? FM : FP);
 
     // only redraw when we explicitly need to (deauth sent or handshake captured)
     bool needRedraw = true; // draw once on entry
@@ -677,10 +678,9 @@ void capture_handshake(String tssid, String mac, uint8_t channel) {
             padprintln("");
             padprintln("Deauth sent: " + String(deauthCount));
             padprintln("");
-            tft.drawRightString(
-                "Press " + String(BTN_ALIAS) + " to send deauth", tftWidth - 10, tftHeight - 35, 1
-            );
-            tft.drawString("Press Back to exit", 10, tftHeight - 20);
+            // FIX: Use padprintln so the text flows instead of overlapping at a hardcoded position
+            padprintln("Press " + String(BTN_ALIAS) + " to send deauth");
+            padprintln("Press Back to exit");
 
             // reset redraw flag
             needRedraw = false;
