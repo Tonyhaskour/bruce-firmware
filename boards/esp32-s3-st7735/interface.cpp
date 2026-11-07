@@ -142,8 +142,8 @@ void InputHandler(void) {
 
     if (rgKeys[RG_START].stable == LOW && (now - rgKeys[RG_START].pressedAt) >= RG_POWEROFF_MS) powerOff();
     
-    // A short tap on START just wakes the screen
-    if (start) wakeUpScreen();
+    // FIX 2: Wake up the screen on ANY button press so it doesn't sleep while typing
+    if (start || up || down || left || right || a || b || sel) wakeUpScreen();
 
     if (!(up || down || left || right || a || b || sel)) return;
 
