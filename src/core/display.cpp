@@ -890,9 +890,13 @@ void drawMainBorderWithTitle(String title, bool clear) {
 }
 
 void printTitle(String title) {
-    tft.setCursor((tftWidth - (title.length() * FM * LW)) / 2, BORDER_PAD_Y);
+    int titleSize = FM;
+    if (title.length() * FM * LW > tftWidth) {
+        titleSize = FP;
+    }
+    tft.setCursor((tftWidth - (title.length() * titleSize * LW)) / 2, BORDER_PAD_Y);
     tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-    tft.setTextSize(FM);
+    tft.setTextSize(titleSize);
 
     title.toUpperCase();
     tft.println(title);
